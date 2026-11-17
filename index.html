@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salsa Figuren Lab</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        salsa: {
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            200: '#fecdd3',
+                            500: '#f43f5e',
+                            600: '#e11d48',
+                            700: '#be123c',
+                            900: '#881337',
+                        },
+                        amberwarm: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom animaties voor de dobbelsteen en kaarten */
+        @keyframes diceRoll {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(-18deg) scale(1.12); }
+            50% { transform: rotate(18deg) scale(1.15); }
+            75% { transform: rotate(-10deg) scale(1.08); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+
+        .animate-dice {
+            animation: diceRoll 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: translateY(6px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .animate-pop {
+            animation: popIn 0.25s ease-out forwards;
+        }
+
+        /* Native <dialog> scroll containment & backdrop */
+        dialog:modal {
+            overscroll-behavior: contain;
+        }
+        dialog::backdrop {
+            background-color: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(3px);
+            overflow: hidden;
+            overscroll-behavior: contain;
+        }
+
+        /* Subtiele custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #cbd5e1;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-salsa-200 selection:text-salsa-900">
+
+    <!-- Toast / Meldingen Container (vervangt alert) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-xs w-full px-4 sm:px-0"></div>
+
+    <!-- Header -->
+    <header class="bg-white border-b border-stone-200/80 sticky top-0 z-30 backdrop-blur-md bg-white/90">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-salsa-500 to-amberwarm-500 flex items-center justify-center text-white shadow-md shadow-salsa-500/20 shrink-0">
+                    <!-- Dans / Muziek Icoon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="5" r="2"/>
+                        <path d="m9 20 3-6 3 6"/>
+                        <path d="m6 8 6 2 6-2"/>
+                        <path d="M12 10v4"/>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="font-display font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 leading-tight truncate">
+                        Salsa Figuren Lab
+                    </h1>
+                    <p class="text-xs text-slate-500 hidden sm:block">Gooi de dobbelsteen of stel zelf nieuwe combinaties samen</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button" id="gist-open-btn" onclick="openGistDialog()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-stone-50 hover:border-slate-300 transition-colors cursor-pointer" title="Synchroniseer of deel via GitHub Gist">
+                    <span id="gist-status-dot" class="w-2 h-2 rounded-full bg-slate-300"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-600" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    <span class="hidden sm:inline">GitHub Gist</span>
+                    <span class="sm:hidden">Gist</span>
+                </button>
+
+                <span id="saved-counter-badge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-salsa-50 text-salsa-700 border border-salsa-100">
+                    <span class="w-2 h-2 rounded-full bg-salsa-500"></span>
+                    <span id="saved-count">0</span> <span class="hidden sm:inline">opgeslagen</span>
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hoofdinhoud -->
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8">
+
+        <!-- Sectie 1: Generator & Handmatige Keuze -->
+        <section class="bg-white rounded-3xl shadow-sm border border-stone-200/80 p-5 sm:p-8 relative overflow-hidden">
+            <!-- Subtiele decoratieve achtergrondgloed -->
+            <div class="absolute -top-24 -right-24 w-64 h-64 bg-salsa-100/50 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-24 w-64 h-64 bg-amberwarm-100/50 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="relative z-10">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+                    <div>
+                        <h2 class="font-display font-bold text-lg text-slate-900">Huidige Combinatie</h2>
+                        <p class="text-sm text-slate-500">Druk op de dobbelsteen voor inspiratie of kies zelf uit de lijsten.</p>
+                    </div>
+                    <!-- Tip voor vergrendelen -->
+                    <span class="text-xs text-slate-400 italic">Tip: gebruik het slotje om één rol vast te zetten</span>
+                </div>
+
+                <!-- Twee Kolommen: Leider & Volger -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-7">
+                    
+                    <!-- LEIDER KAART -->
+                    <div id="leader-card" class="group rounded-2xl bg-gradient-to-b from-slate-50 to-white border-2 border-slate-200/90 p-5 transition-all hover:border-salsa-300 shadow-xs">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-salsa-600 bg-salsa-50 px-2.5 py-1 rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                Leider
+                            </span>
+                            <button type="button" id="lock-leader-btn" onclick="toggleLock('leader')" title="Vergrendel leider beweging bij dobbelen" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-salsa-500/30">
+                                <!-- Open slot icoon (wordt via JS bijgewerkt) -->
+                                <svg id="lock-leader-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Grote weergave van gekozen beweging -->
+                        <div class="min-h-[3.25rem] flex items-center mb-3">
+                            <p id="leader-display" class="font-display font-extrabold text-2xl sm:text-3xl text-slate-900 tracking-tight">
+                                Rechterdraai
+                            </p>
+                        </div>
+
+                        <!-- Handmatige dropdown selectie -->
+                        <div class="relative">
+                            <label for="leader-select" class="sr-only">Kies beweging voor Leider</label>
+                            <select id="leader-select" onchange="handleManualSelect('leader', this.value)" class="w-full appearance-none rounded-xl bg-white border border-slate-200 px-3.5 py-2.5 pr-9 text-sm font-medium text-slate-700 shadow-2xs focus:border-salsa-500 focus:outline-none focus:ring-2 focus:ring-salsa-500/20 cursor-pointer transition-colors">
+                                <!-- Opties worden via JS gevuld -->
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VOLGER KAART -->
+                    <div id="follower-card" class="group rounded-2xl bg-gradient-to-b from-amberwarm-50/40 to-white border-2 border-slate-200/90 p-5 transition-all hover:border-amberwarm-500/50 shadow-xs">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amberwarm-600 bg-amberwarm-50 px-2.5 py-1 rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                Volger
+                            </span>
+                            <button type="button" id="lock-follower-btn" onclick="toggleLock('follower')" title="Vergrendel volger beweging bij dobbelen" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-amberwarm-500/30">
+                                <svg id="lock-follower-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Grote weergave van gekozen beweging -->
+                        <div class="min-h-[3.25rem] flex items-center mb-3">
+                            <p id="follower-display" class="font-display font-extrabold text-2xl sm:text-3xl text-slate-900 tracking-tight">
+                                Inside turn
+                            </p>
+                        </div>
+
+                        <!-- Handmatige dropdown selectie -->
+                        <div class="relative">
+                            <label for="follower-select" class="sr-only">Kies beweging voor Volger</label>
+                            <select id="follower-select" onchange="handleManualSelect('follower', this.value)" class="w-full appearance-none rounded-xl bg-white border border-slate-200 px-3.5 py-2.5 pr-9 text-sm font-medium text-slate-700 shadow-2xs focus:border-amberwarm-500 focus:outline-none focus:ring-2 focus:ring-amberwarm-500/20 cursor-pointer transition-colors">
+                                <!-- Opties worden via JS gevuld -->
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Dobbelsteen Actieknop -->
+                <div class="flex justify-center mb-8">
+                    <button type="button" id="roll-btn" onclick="rollCombination()" class="group relative inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-salsa-600 via-salsa-500 to-amberwarm-500 text-white font-display font-bold text-base sm:text-lg shadow-lg shadow-salsa-500/30 hover:shadow-xl hover:shadow-salsa-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer select-none w-full sm:w-auto">
+                        <!-- Dobbelsteen SVG -->
+                        <svg id="dice-svg" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="18" height="18" x="3" y="3" rx="3" ry="3"/>
+                            <circle cx="8.5" cy="8.5" r="1" fill="currentColor"/>
+                            <circle cx="15.5" cy="8.5" r="1" fill="currentColor"/>
+                            <circle cx="15.5" cy="15.5" r="1" fill="currentColor"/>
+                            <circle cx="8.5" cy="15.5" r="1" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                        </svg>
+                        <span>Gooi Dobbelsteen</span>
+                    </button>
+                </div>
+
+                <!-- Notitie toevoegen & Opslaan -->
+                <form id="save-form" onsubmit="saveCurrentFigure(event)" class="pt-6 border-t border-stone-200/80">
+                    <label for="figure-note" class="block text-sm font-semibold text-slate-700 mb-2">
+                        Notitie bij deze combinatie <span class="text-slate-400 font-normal">(optioneel)</span>
+                    </label>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input 
+                            type="text" 
+                            id="figure-note" 
+                            placeholder="Bijv. Handwissel op tel 5, eindigen in gesloten houding..." 
+                            class="flex-1 rounded-xl border border-slate-200 bg-stone-50/70 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-salsa-500 focus:outline-none focus:ring-2 focus:ring-salsa-500/20 transition-all"
+                        >
+                        <button type="submit" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm shadow-sm transition-all cursor-pointer shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                            </svg>
+                            <span>Figuur Opslaan</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Sectie 2: Opgeslagen Figuren Lijst -->
+        <section class="space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h2 class="font-display font-bold text-lg text-slate-900">Mijn Opgeslagen Figuren</h2>
+                    <p id="storage-subtitle" class="text-xs sm:text-sm text-slate-500">Automatisch bewaard in je browser (local storage).</p>
+                </div>
+
+                <!-- Zoek- & Kopieer-acties -->
+                <div id="list-actions" class="flex items-center gap-2">
+                    <div class="relative flex-1 sm:w-56">
+                        <input 
+                            type="text" 
+                            id="search-input" 
+                            oninput="renderSavedFigures()" 
+                            placeholder="Zoek op beweging of notitie..." 
+                            class="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-700 placeholder:text-slate-400 focus:border-salsa-500 focus:outline-none focus:ring-2 focus:ring-salsa-500/20"
+                        >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                        </svg>
+                    </div>
+                    <button type="button" onclick="copyAllToClipboard()" title="Kopieer gehele lijst naar klembord" class="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-stone-50 transition-colors cursor-pointer shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lijst Container -->
+            <div id="saved-list" class="space-y-3">
+                <!-- Kaarten worden hier dynamisch gerenderd -->
+            </div>
+
+            <!-- Lege staat -->
+            <div id="empty-state" class="hidden bg-white rounded-3xl border border-dashed border-slate-300 p-10 text-center">
+                <div class="w-12 h-12 rounded-2xl bg-stone-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" x2="12" y1="18" y2="12"/><line x1="9" x2="15" y1="15" y2="15"/>
+                    </svg>
+                </div>
+                <h3 class="font-display font-bold text-slate-800 text-base mb-1">Nog geen figuren opgeslagen</h3>
+                <p class="text-sm text-slate-500 max-w-sm mx-auto">Gooi de dobbelsteen of kies twee bewegingen hierboven en klik op "Figuur Opslaan" om je eigen repertoire op te bouwen.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- GitHub Gist Modal Dialog -->
+    <dialog id="gist-dialog" closedby="any" aria-labelledby="gist-dialog-title" class="m-auto w-[calc(100%-2rem)] max-w-lg rounded-3xl bg-white p-0 shadow-2xl border border-stone-200 text-slate-800">
+        <div class="p-6 sm:p-7 space-y-5">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 id="gist-dialog-title" class="font-display font-bold text-lg text-slate-900">GitHub Gist Synchronisatie</h2>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Bewaar je figuren in een GitHub Gist of laad ze vanaf een ander apparaat.</p>
+                </div>
+                <button type="button" onclick="closeGistDialog()" aria-label="Sluiten" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-stone-100 transition-colors cursor-pointer shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Huidige Gist Status -->
+            <div id="gist-info-banner" class="hidden rounded-2xl bg-stone-50 border border-stone-200 px-4 py-3 text-xs space-y-1">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="font-semibold text-slate-700">Gekoppelde Gist:</span>
+                    <a id="gist-external-link" href="#" target="_blank" rel="noopener noreferrer" class="text-salsa-600 hover:text-salsa-700 font-medium underline underline-offset-2 truncate">Bekijk op GitHub</a>
+                </div>
+                <p id="gist-last-synced" class="text-slate-500"></p>
+            </div>
+
+            <!-- Gist ID / URL -->
+            <div class="space-y-1.5">
+                <label for="gist-id-input" class="block text-xs font-semibold text-slate-700">
+                    Gist ID of URL <span class="text-slate-400 font-normal">(laat leeg om een nieuwe Gist aan te maken)</span>
+                </label>
+                <input
+                    type="text"
+                    id="gist-id-input"
+                    autofocus
+                    placeholder="Bijv. a1b2c3d4... of https://gist.github.com/..."
+                    class="w-full rounded-xl border border-slate-200 bg-stone-50/70 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-salsa-500 focus:outline-none focus:ring-2 focus:ring-salsa-500/20"
+                >
+            </div>
+
+            <!-- GitHub Personal Access Token -->
+            <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <label for="gist-token-input" class="block text-xs font-semibold text-slate-700">
+                        GitHub Personal Access Token <span class="text-slate-400 font-normal">(voor opslaan/bijwerken)</span>
+                    </label>
+                    <a href="https://github.com/settings/tokens/new?scopes=gist&description=Salsa%20Figuren%20Lab" target="_blank" rel="noopener noreferrer" class="text-[11px] font-medium text-salsa-600 hover:text-salsa-700 underline underline-offset-2">
+                        Token aanmaken
+                    </a>
+                </div>
+                <div class="relative">
+                    <input
+                        type="password"
+                        id="gist-token-input"
+                        autocomplete="off"
+                        placeholder="ghp_... of github_pat_..."
+                        class="w-full rounded-xl border border-slate-200 bg-stone-50/70 px-3.5 py-2.5 pr-16 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-salsa-500 focus:outline-none focus:ring-2 focus:ring-salsa-500/20"
+                    >
+                    <button type="button" onclick="toggleTokenVisibility()" id="toggle-token-btn" class="absolute right-2.5 top-1/2 -translate-y-1/2 px-2 py-1 text-[11px] font-semibold text-slate-500 hover:text-slate-800 cursor-pointer">
+                        Toon
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                    Alleen <code class="bg-stone-100 px-1 py-0.5 rounded text-slate-600">gist</code>-rechten nodig. Je token wordt uitsluitend lokaal in je eigen browser (<code class="bg-stone-100 px-1 py-0.5 rounded text-slate-600">localStorage</code>) bewaard.
+                </p>
+            </div>
+
+            <!-- Opties -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer select-none">
+                    <input type="checkbox" id="gist-secret-checkbox" checked class="rounded border-slate-300 text-salsa-600 focus:ring-salsa-500">
+                    <span>Nieuwe Gist privé (secret) maken</span>
+                </label>
+
+                <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer select-none">
+                    <input type="checkbox" id="gist-autosync-checkbox" class="rounded border-slate-300 text-salsa-600 focus:ring-salsa-500">
+                    <span>Auto-sync bij wijzigingen</span>
+                </label>
+            </div>
+
+            <!-- Feedback in modal -->
+            <div id="gist-feedback" class="hidden rounded-xl px-3.5 py-2.5 text-xs font-medium"></div>
+
+            <!-- Actieknoppen -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-stone-200/80">
+                <button type="button" id="gist-push-btn" onclick="pushToGist()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>
+                    </svg>
+                    <span>Opslaan naar Gist</span>
+                </button>
+
+                <button type="button" id="gist-merge-btn" onclick="pullFromGist('merge')" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-salsa-50 hover:bg-salsa-100 text-salsa-700 border border-salsa-200 text-xs sm:text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
+                    </svg>
+                    <span>Laden &amp; Samenvoegen</span>
+                </button>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 text-xs pt-1">
+                <button type="button" onclick="pullFromGist('replace')" class="text-slate-500 hover:text-slate-800 underline underline-offset-2 cursor-pointer">
+                    Lijst volledig vervangen door Gist
+                </button>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="copyGistShareLink()" class="text-salsa-600 hover:text-salsa-700 font-medium cursor-pointer">
+                        Deel-link kopiëren
+                    </button>
+                    <button type="button" onclick="clearGistConfig()" class="text-red-600 hover:text-red-700 font-medium cursor-pointer">
+                        Ontkoppelen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Footer -->
+    <footer class="py-6 text-center text-xs text-slate-400 border-t border-stone-200/60 mt-12">
+        Salsa Figuren Lab &bull; Veel dansplezier!
+    </footer>
+
+    <script>
+        /**
+         * DATA DEFINITIES
+         * Lijsten met bewegingen voor Leider en Volger.
+         */
+        const LEADER_MOVES = [
+            "Rechterdraai",
+            "Linkerdraai",
+            "Basis",
+            "Half rechts",
+            "Half links",
+            "Open links",
+            "Open rechts",
+            "Spot turn links",
+            "Spot turn rechts",
+            "Open break"
+        ];
+
+        const FOLLOWER_MOVES = [
+            "Rechterdraai",
+            "Linkerdraai",
+            "Basis",
+            "Inside turn",
+            "Outside turn",
+            "Copa",
+            "Half links",
+            "Half rechts"
+        ];
+
+        const STORAGE_KEY = 'salsa_figuren_collectie_v1';
+        const GIST_CONFIG_KEY = 'salsa_figuren_gist_config_v1';
+        const GIST_FILENAME = 'salsa-figuren.json';
+
+        /**
+         * APPLICATIE STATE
+         */
+        let state = {
+            currentLeader: LEADER_MOVES[0],
+            currentFollower: FOLLOWER_MOVES[3], // Inside turn als leuke standaard
+            lockedLeader: false,
+            lockedFollower: false,
+            savedFigures: [],
+            editingId: null,
+            confirmDeleteId: null,
+            gist: {
+                gistId: '',
+                token: '',
+                autoSync: false,
+                lastSyncedAt: null
+            }
+        };
+
+        /**
+         * INITIALISATIE BIJ LADEN VAN DE PAGINA
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            populateSelectDropdowns();
+            loadFromLocalStorage();
+            loadGistConfig();
+            setupGistDialog();
+            updateGistStatusUI();
+
+            // Start met een willekeurige worp voor directe inspiratie
+            rollCombination(true);
+            renderSavedFigures();
+
+            // Ondersteuning voor ?gist=<id> in de URL om direct een gedeelde Gist te laden
+            const urlParams = new URLSearchParams(window.location.search);
+            const sharedGist = urlParams.get('gist');
+            if (sharedGist) {
+                const parsedId = extractGistId(sharedGist);
+                if (parsedId) {
+                    state.gist.gistId = parsedId;
+                    saveGistConfig();
+                    updateGistStatusUI();
+                    pullFromGist('merge', true);
+                }
+            }
+        });
+
+        /**
+         * Vult de HTML <select> elementen met de bewegingen
+         */
+        function populateSelectDropdowns() {
+            const leaderSelect = document.getElementById('leader-select');
+            const followerSelect = document.getElementById('follower-select');
+
+            leaderSelect.innerHTML = LEADER_MOVES.map(move => 
+                `<option value="${escapeHtml(move)}">${escapeHtml(move)}</option>`
+            ).join('');
+
+            followerSelect.innerHTML = FOLLOWER_MOVES.map(move => 
+                `<option value="${escapeHtml(move)}">${escapeHtml(move)}</option>`
+            ).join('');
+        }
+
+        /**
+         * Zorgt dat een eventueel aangepaste beweging ook in de <select> bestaat
+         */
+        function ensureSelectOption(selectEl, value) {
+            const exists = Array.from(selectEl.options).some(opt => opt.value === value);
+            if (!exists && value) {
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = value;
+                selectEl.appendChild(opt);
+            }
+            selectEl.value = value;
+        }
+
+        /**
+         * Werkt de UI van de generator bij op basis van de huidige state
+         */
+        function updateGeneratorUI(animate = false) {
+            const leaderDisplay = document.getElementById('leader-display');
+            const followerDisplay = document.getElementById('follower-display');
+            const leaderSelect = document.getElementById('leader-select');
+            const followerSelect = document.getElementById('follower-select');
+
+            leaderDisplay.textContent = state.currentLeader;
+            followerDisplay.textContent = state.currentFollower;
+            ensureSelectOption(leaderSelect, state.currentLeader);
+            ensureSelectOption(followerSelect, state.currentFollower);
+
+            if (animate) {
+                if (!state.lockedLeader) {
+                    leaderDisplay.classList.remove('animate-pop');
+                    void leaderDisplay.offsetWidth; // Force reflow
+                    leaderDisplay.classList.add('animate-pop');
+                }
+                if (!state.lockedFollower) {
+                    followerDisplay.classList.remove('animate-pop');
+                    void followerDisplay.offsetWidth;
+                    followerDisplay.classList.add('animate-pop');
+                }
+            }
+        }
+
+        /**
+         * Handmatige selectie vanuit een van de dropdowns
+         */
+        function handleManualSelect(role, value) {
+            if (role === 'leader') {
+                state.currentLeader = value;
+            } else if (role === 'follower') {
+                state.currentFollower = value;
+            }
+            updateGeneratorUI(true);
+        }
+
+        /**
+         * Vergrendelen/ontgrendelen van Leider of Volger tijdens het dobbelen
+         */
+        function toggleLock(role) {
+            if (role === 'leader') {
+                state.lockedLeader = !state.lockedLeader;
+                updateLockVisuals('leader', state.lockedLeader);
+            } else {
+                state.lockedFollower = !state.lockedFollower;
+                updateLockVisuals('follower', state.lockedFollower);
+            }
+        }
+
+        function updateLockVisuals(role, isLocked) {
+            const btn = document.getElementById(`lock-${role}-btn`);
+            const icon = document.getElementById(`lock-${role}-icon`);
+            const card = document.getElementById(`${role}-card`);
+
+            if (isLocked) {
+                btn.classList.remove('text-slate-400', 'hover:text-slate-700');
+                btn.classList.add('text-salsa-600', 'bg-salsa-50');
+                card.classList.add('ring-2', role === 'leader' ? 'ring-salsa-500/20' : 'ring-amberwarm-500/20');
+                // Gesloten slotje SVG
+                icon.innerHTML = `<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`;
+            } else {
+                btn.classList.add('text-slate-400', 'hover:text-slate-700');
+                btn.classList.remove('text-salsa-600', 'bg-salsa-50');
+                card.classList.remove('ring-2', 'ring-salsa-500/20', 'ring-amberwarm-500/20');
+                // Open slotje SVG
+                icon.innerHTML = `<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>`;
+            }
+        }
+
+        /**
+         * Kiest een willekeurig element uit een array, bij voorkeur anders dan de huidige waarde
+         */
+        function pickRandom(array, currentValue) {
+            if (array.length <= 1) return array[0];
+            let candidate;
+            let attempts = 0;
+            do {
+                candidate = array[Math.floor(Math.random() * array.length)];
+                attempts++;
+            } while (candidate === currentValue && attempts < 5);
+            return candidate;
+        }
+
+        /**
+         * Gooit de dobbelsteen en genereert een nieuwe combinatie
+         */
+        function rollCombination(silent = false) {
+            if (state.lockedLeader && state.lockedFollower) {
+                showToast('Beide bewegingen staan op slot. Ontgrendel er minstens één om te dobbelen.', 'info');
+                return;
+            }
+
+            if (!silent) {
+                const diceSvg = document.getElementById('dice-svg');
+                diceSvg.classList.remove('animate-dice');
+                void diceSvg.offsetWidth;
+                diceSvg.classList.add('animate-dice');
+            }
+
+            if (!state.lockedLeader) {
+                state.currentLeader = pickRandom(LEADER_MOVES, state.currentLeader);
+            }
+            if (!state.lockedFollower) {
+                state.currentFollower = pickRandom(FOLLOWER_MOVES, state.currentFollower);
+            }
+
+            updateGeneratorUI(true);
+        }
+
+        /**
+         * Slaat de huidige combinatie met notitie op in state en localStorage
+         */
+        function saveCurrentFigure(event) {
+            event.preventDefault();
+            const noteInput = document.getElementById('figure-note');
+            const noteText = noteInput.value.trim();
+
+            const newFigure = {
+                id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+                leader: state.currentLeader,
+                follower: state.currentFollower,
+                note: noteText,
+                createdAt: new Date().toLocaleDateString('nl-NL', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                })
+            };
+
+            state.savedFigures.unshift(newFigure);
+            saveToLocalStorage();
+            renderSavedFigures();
+
+            noteInput.value = '';
+            showToast('Figuur opgeslagen in je lijst!', 'success');
+            maybeAutoSyncGist();
+        }
+
+        /**
+         * Laadt een opgeslagen figuur terug in de generator om mee te oefenen
+         */
+        function loadFigureIntoGenerator(id) {
+            const fig = state.savedFigures.find(f => f.id === id);
+            if (!fig) return;
+
+            state.currentLeader = fig.leader;
+            state.currentFollower = fig.follower;
+            updateGeneratorUI(true);
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            showToast('Combinatie geladen in generator', 'info');
+        }
+
+        /**
+         * Start bewerken van een notitie bij een opgeslagen figuur
+         */
+        function startEditNote(id) {
+            state.editingId = id;
+            state.confirmDeleteId = null;
+            renderSavedFigures();
+            
+            setTimeout(() => {
+                const input = document.getElementById(`edit-note-input-${id}`);
+                if (input) {
+                    input.focus();
+                    input.setSelectionRange(input.value.length, input.value.length);
+                }
+            }, 30);
+        }
+
+        function cancelEditNote() {
+            state.editingId = null;
+            renderSavedFigures();
+        }
+
+        function saveEditedNote(id) {
+            const input = document.getElementById(`edit-note-input-${id}`);
+            if (!input) return;
+
+            const fig = state.savedFigures.find(f => f.id === id);
+            if (fig) {
+                fig.note = input.value.trim();
+                saveToLocalStorage();
+                showToast('Notitie bijgewerkt', 'success');
+                maybeAutoSyncGist();
+            }
+            state.editingId = null;
+            renderSavedFigures();
+        }
+
+        /**
+         * Verwijderen met twee-staps inline bevestiging (geen confirm() dialoog)
+         */
+        function requestDelete(id) {
+            state.confirmDeleteId = id;
+            state.editingId = null;
+            renderSavedFigures();
+        }
+
+        function cancelDelete() {
+            state.confirmDeleteId = null;
+            renderSavedFigures();
+        }
+
+        function confirmDelete(id) {
+            state.savedFigures = state.savedFigures.filter(f => f.id !== id);
+            state.confirmDeleteId = null;
+            saveToLocalStorage();
+            renderSavedFigures();
+            showToast('Figuur verwijderd', 'info');
+            maybeAutoSyncGist();
+        }
+
+        /**
+         * Valideert en normaliseert een array met figuren
+         */
+        function sanitizeFiguresList(items) {
+            if (!Array.isArray(items)) return [];
+            return items
+                .filter(item => item && typeof item === 'object' && typeof item.leader === 'string' && typeof item.follower === 'string')
+                .map(item => ({
+                    id: typeof item.id === 'string' && item.id.trim()
+                        ? item.id.trim()
+                        : Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+                    leader: item.leader.trim(),
+                    follower: item.follower.trim(),
+                    note: typeof item.note === 'string' ? item.note : '',
+                    createdAt: typeof item.createdAt === 'string' ? item.createdAt : ''
+                }))
+                .filter(item => item.leader && item.follower);
+        }
+
+        /**
+         * LocalStorage hulpfuncties met foutafhandeling
+         */
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state.savedFigures));
+                return true;
+            } catch (e) {
+                console.error('Fout bij opslaan in localStorage:', e);
+                showToast('Kon niet opslaan in browser-opslag.', 'error');
+                return false;
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    state.savedFigures = sanitizeFiguresList(parsed);
+                }
+            } catch (e) {
+                console.error('Fout bij lezen uit localStorage:', e);
+                state.savedFigures = [];
+            }
+        }
+
+        /**
+         * GITHUB GIST INTEGRATIE
+         */
+        function loadGistConfig() {
+            try {
+                const raw = localStorage.getItem(GIST_CONFIG_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === 'object') {
+                        state.gist = {
+                            gistId: typeof parsed.gistId === 'string' ? parsed.gistId : '',
+                            token: typeof parsed.token === 'string' ? parsed.token : '',
+                            autoSync: Boolean(parsed.autoSync),
+                            lastSyncedAt: typeof parsed.lastSyncedAt === 'string' ? parsed.lastSyncedAt : null
+                        };
+                    }
+                }
+            } catch (e) {
+                console.error('Fout bij laden van Gist-instellingen:', e);
+            }
+        }
+
+        function saveGistConfig() {
+            try {
+                localStorage.setItem(GIST_CONFIG_KEY, JSON.stringify(state.gist));
+            } catch (e) {
+                console.error('Fout bij opslaan van Gist-instellingen:', e);
+            }
+        }
+
+        function extractGistId(input) {
+            if (!input) return '';
+            const trimmed = input.trim();
+            if (!trimmed) return '';
+            try {
+                if (trimmed.includes('gist.github.com')) {
+                    const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
+                    const parts = url.pathname.split('/').filter(Boolean);
+                    return parts.length > 0 ? parts[parts.length - 1] : '';
+                }
+            } catch (e) {
+                // Geen geldige URL, behandel als directe ID
+            }
+            return trimmed.replace(/[^a-zA-Z0-9_-]/g, '');
+        }
+
+        function setupGistDialog() {
+            const dialog = document.getElementById('gist-dialog');
+            if (!dialog) return;
+
+            // Fallback voor browsers zonder native closedby="any" ondersteuning (zoals oudere Safari)
+            if (!('closedBy' in HTMLDialogElement.prototype)) {
+                const outside = (e) => {
+                    const r = dialog.getBoundingClientRect();
+                    return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+                };
+                let pressedOutside = false;
+                dialog.addEventListener('pointerdown', (e) => {
+                    pressedOutside = outside(e);
+                });
+                dialog.addEventListener('pointerup', (e) => {
+                    if (pressedOutside && outside(e)) {
+                        dialog.close();
+                    }
+                });
+            }
+
+            dialog.addEventListener('close', () => {
+                dialog.returnValue = '';
+            });
+        }
+
+        function openGistDialog() {
+            const dialog = document.getElementById('gist-dialog');
+            document.getElementById('gist-id-input').value = state.gist.gistId || '';
+            document.getElementById('gist-token-input').value = state.gist.token || '';
+            document.getElementById('gist-autosync-checkbox').checked = Boolean(state.gist.autoSync);
+            hideGistFeedback();
+            updateGistDialogBanner();
+            dialog.showModal();
+        }
+
+        function closeGistDialog() {
+            const dialog = document.getElementById('gist-dialog');
+            dialog.close();
+        }
+
+        function toggleTokenVisibility() {
+            const input = document.getElementById('gist-token-input');
+            const btn = document.getElementById('toggle-token-btn');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = 'Verberg';
+            } else {
+                input.type = 'password';
+                btn.textContent = 'Toon';
+            }
+        }
+
+        function showGistFeedback(message, type = 'info') {
+            const el = document.getElementById('gist-feedback');
+            const classes = {
+                success: 'bg-emerald-50 text-emerald-800 border border-emerald-200',
+                error: 'bg-red-50 text-red-700 border border-red-200',
+                info: 'bg-stone-100 text-slate-700 border border-stone-200'
+            };
+            el.className = `rounded-xl px-3.5 py-2.5 text-xs font-medium ${classes[type] || classes.info}`;
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+
+        function hideGistFeedback() {
+            const el = document.getElementById('gist-feedback');
+            if (el) el.classList.add('hidden');
+        }
+
+        function updateGistDialogBanner() {
+            const banner = document.getElementById('gist-info-banner');
+            const link = document.getElementById('gist-external-link');
+            const lastSynced = document.getElementById('gist-last-synced');
+
+            if (state.gist.gistId) {
+                banner.classList.remove('hidden');
+                link.href = `https://gist.github.com/${encodeURIComponent(state.gist.gistId)}`;
+                lastSynced.textContent = state.gist.lastSyncedAt
+                    ? `Laatst gesynchroniseerd: ${state.gist.lastSyncedAt}`
+                    : 'Gist ID ingesteld (nog niet gesynchroniseerd in deze sessie)';
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        function updateGistStatusUI() {
+            const dot = document.getElementById('gist-status-dot');
+            const subtitle = document.getElementById('storage-subtitle');
+            if (!dot || !subtitle) return;
+
+            if (state.gist.gistId && state.gist.token && state.gist.autoSync) {
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+                subtitle.textContent = 'Bewaard in je browser (local storage) & automatisch gesynchroniseerd met GitHub Gist.';
+            } else if (state.gist.gistId) {
+                dot.className = 'w-2 h-2 rounded-full bg-amberwarm-500';
+                subtitle.textContent = 'Bewaard in je browser (local storage) • Gekoppeld aan GitHub Gist.';
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-slate-300';
+                subtitle.textContent = 'Automatisch bewaard in je browser (local storage).';
+            }
+        }
+
+        function syncGistInputsToState() {
+            const rawId = document.getElementById('gist-id-input').value;
+            const rawToken = document.getElementById('gist-token-input').value.trim();
+            const autoSync = document.getElementById('gist-autosync-checkbox').checked;
+
+            state.gist.gistId = extractGistId(rawId);
+            state.gist.token = rawToken;
+            state.gist.autoSync = autoSync;
+            saveGistConfig();
+            updateGistStatusUI();
+        }
+
+        function buildGistPayloadContent() {
+            return JSON.stringify({
+                app: 'Salsa Figuren Lab',
+                version: 1,
+                updatedAt: new Date().toISOString(),
+                figures: state.savedFigures
+            }, null, 2);
+        }
+
+        async function pushToGist(quiet = false) {
+            if (!quiet) {
+                syncGistInputsToState();
+            }
+
+            const { gistId, token } = state.gist;
+            if (!token) {
+                if (!quiet) {
+                    showGistFeedback('Vul eerst een GitHub Personal Access Token (met gist-rechten) in om op te slaan.', 'error');
+                }
+                return false;
+            }
+
+            const pushBtn = document.getElementById('gist-push-btn');
+            if (!quiet && pushBtn) pushBtn.disabled = true;
+
+            try {
+                const isUpdate = Boolean(gistId);
+                const endpoint = isUpdate
+                    ? `https://api.github.com/gists/${encodeURIComponent(gistId)}`
+                    : 'https://api.github.com/gists';
+                const method = isUpdate ? 'PATCH' : 'POST';
+
+                const body = {
+                    description: 'Salsa Figuren Lab - Opgeslagen salsa figuren',
+                    files: {
+                        [GIST_FILENAME]: {
+                            content: buildGistPayloadContent()
+                        }
+                    }
+                };
+
+                if (!isUpdate) {
+                    const isSecret = document.getElementById('gist-secret-checkbox')?.checked ?? true;
+                    body.public = !isSecret;
+                }
+
+                const response = await fetch(endpoint, {
+                    method,
+                    headers: {
+                        'Accept': 'application/vnd.github+json',
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'X-GitHub-Api-Version': '2022-11-28'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.message || `GitHub API fout (${response.status})`);
+                }
+
+                const data = await response.json();
+                state.gist.gistId = data.id;
+                state.gist.lastSyncedAt = new Date().toLocaleString('nl-NL');
+                saveGistConfig();
+                updateGistStatusUI();
+                updateGistDialogBanner();
+
+                if (!quiet) {
+                    document.getElementById('gist-id-input').value = data.id;
+                    showGistFeedback(
+                        isUpdate ? 'Gist succesvol bijgewerkt!' : `Nieuwe Gist aangemaakt (${data.id})!`,
+                        'success'
+                    );
+                    showToast('Opgeslagen naar GitHub Gist!', 'success');
+                }
+                return true;
+            } catch (err) {
+                console.error('Fout bij opslaan naar Gist:', err);
+                if (!quiet) {
+                    showGistFeedback(`Opslaan mislukt: ${err.message}`, 'error');
+                } else {
+                    showToast('Auto-sync naar Gist mislukt', 'error');
+                }
+                return false;
+            } finally {
+                if (!quiet && pushBtn) pushBtn.disabled = false;
+            }
+        }
+
+        async function pullFromGist(mode = 'merge', quiet = false) {
+            if (!quiet) {
+                syncGistInputsToState();
+            }
+
+            const { gistId, token } = state.gist;
+            if (!gistId) {
+                if (!quiet) {
+                    showGistFeedback('Vul eerst een Gist ID of URL in om te laden.', 'error');
+                }
+                return false;
+            }
+
+            const mergeBtn = document.getElementById('gist-merge-btn');
+            if (!quiet && mergeBtn) mergeBtn.disabled = true;
+
+            try {
+                const headers = {
+                    'Accept': 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': '2022-11-28'
+                };
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`https://api.github.com/gists/${encodeURIComponent(gistId)}`, {
+                    headers
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.message || `GitHub API fout (${response.status})`);
+                }
+
+                const gist = await response.json();
+                const files = gist.files || {};
+                const targetFile = files[GIST_FILENAME]
+                    || Object.values(files).find(f => f && f.filename && f.filename.endsWith('.json'))
+                    || Object.values(files)[0];
+
+                if (!targetFile) {
+                    throw new Error('Geen bestand gevonden in deze Gist.');
+                }
+
+                let rawContent = targetFile.content;
+                if (targetFile.truncated && targetFile.raw_url) {
+                    const rawResp = await fetch(targetFile.raw_url);
+                    if (!rawResp.ok) throw new Error('Kon volledige Gist-inhoud niet ophalen.');
+                    rawContent = await rawResp.text();
+                }
+
+                const parsed = JSON.parse(rawContent);
+                const rawFigures = Array.isArray(parsed) ? parsed : parsed?.figures;
+                const incoming = sanitizeFiguresList(rawFigures);
+
+                if (mode === 'replace') {
+                    state.savedFigures = incoming;
+                } else {
+                    const existingIds = new Set(state.savedFigures.map(f => f.id));
+                    const newOnes = incoming.filter(f => !existingIds.has(f.id));
+                    state.savedFigures = [...newOnes, ...state.savedFigures];
+                }
+
+                saveToLocalStorage();
+                renderSavedFigures();
+
+                state.gist.lastSyncedAt = new Date().toLocaleString('nl-NL');
+                saveGistConfig();
+                updateGistStatusUI();
+                updateGistDialogBanner();
+
+                const msg = mode === 'replace'
+                    ? `${incoming.length} figuren geladen vanuit Gist.`
+                    : `${incoming.length} figuren uit Gist verwerkt (samengevoegd).`;
+
+                if (!quiet) {
+                    showGistFeedback(msg, 'success');
+                }
+                showToast(msg, 'success');
+                return true;
+            } catch (err) {
+                console.error('Fout bij laden van Gist:', err);
+                if (!quiet) {
+                    showGistFeedback(`Laden mislukt: ${err.message}`, 'error');
+                } else {
+                    showToast(`Gist laden mislukt: ${err.message}`, 'error');
+                }
+                return false;
+            } finally {
+                if (!quiet && mergeBtn) mergeBtn.disabled = false;
+            }
+        }
+
+        let autoSyncTimer = null;
+        function maybeAutoSyncGist() {
+            if (!state.gist.autoSync || !state.gist.gistId || !state.gist.token) return;
+            clearTimeout(autoSyncTimer);
+            autoSyncTimer = setTimeout(() => {
+                pushToGist(true);
+            }, 600);
+        }
+
+        function copyGistShareLink() {
+            syncGistInputsToState();
+            if (!state.gist.gistId) {
+                showGistFeedback('Sla eerst op naar een Gist of vul een Gist ID in om een link te delen.', 'error');
+                return;
+            }
+            const shareUrl = new URL(window.location.href);
+            shareUrl.searchParams.set('gist', state.gist.gistId);
+            copyTextToClipboard(shareUrl.toString(), 'Deel-link gekopieerd naar klembord!');
+        }
+
+        function clearGistConfig() {
+            state.gist = { gistId: '', token: '', autoSync: false, lastSyncedAt: null };
+            localStorage.removeItem(GIST_CONFIG_KEY);
+            document.getElementById('gist-id-input').value = '';
+            document.getElementById('gist-token-input').value = '';
+            document.getElementById('gist-autosync-checkbox').checked = false;
+            updateGistStatusUI();
+            updateGistDialogBanner();
+            showGistFeedback('Gist-koppeling en token gewist uit browser-opslag.', 'info');
+        }
+
+        /**
+         * Rendert de lijst met opgeslagen figuren (inclusief zoekfilter)
+         */
+        function renderSavedFigures() {
+            const listEl = document.getElementById('saved-list');
+            const emptyEl = document.getElementById('empty-state');
+            const countEl = document.getElementById('saved-count');
+            const searchQuery = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+
+            countEl.textContent = state.savedFigures.length;
+
+            if (state.savedFigures.length === 0) {
+                listEl.innerHTML = '';
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+
+            emptyEl.classList.add('hidden');
+
+            const filtered = state.savedFigures.filter(fig => {
+                if (!searchQuery) return true;
+                return fig.leader.toLowerCase().includes(searchQuery) ||
+                       fig.follower.toLowerCase().includes(searchQuery) ||
+                       (fig.note && fig.note.toLowerCase().includes(searchQuery));
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-stone-200 p-6 text-center text-sm text-slate-500">
+                        Geen figuren gevonden voor "<span class="font-semibold text-slate-700">${escapeHtml(searchQuery)}</span>".
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(fig => {
+                const isEditing = state.editingId === fig.id;
+                const isDeleting = state.confirmDeleteId === fig.id;
+                const safeId = escapeHtml(fig.id);
+
+                return `
+                <article class="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-5 shadow-2xs hover:border-stone-300 transition-all">
+                    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        
+                        <!-- Combinatie Badges & Details -->
+                        <div class="space-y-2 flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-salsa-50 text-salsa-800 border border-salsa-100 text-xs sm:text-sm font-bold">
+                                    <span class="text-[10px] uppercase tracking-wider text-salsa-500 font-semibold">Leider:</span>
+                                    ${escapeHtml(fig.leader)}
+                                </span>
+                                <span class="text-slate-300 font-bold">+</span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amberwarm-50 text-amber-900 border border-amberwarm-100 text-xs sm:text-sm font-bold">
+                                    <span class="text-[10px] uppercase tracking-wider text-amberwarm-600 font-semibold">Volger:</span>
+                                    ${escapeHtml(fig.follower)}
+                                </span>
+                            </div>
+
+                            <!-- Notitie Weergave of Bewerkingsveld -->
+                            ${isEditing ? `
+                                <div class="pt-1 flex flex-col sm:flex-row gap-2">
+                                    <input 
+                                        type="text" 
+                                        id="edit-note-input-${safeId}" 
+                                        value="${escapeHtml(fig.note || '')}" 
+                                        onkeydown="if(event.key==='Enter') saveEditedNote('${safeId}'); if(event.key==='Escape') cancelEditNote();"
+                                        placeholder="Voeg een notitie toe..."
+                                        class="flex-1 rounded-xl border border-salsa-300 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-salsa-500/20"
+                                    >
+                                    <div class="flex items-center gap-1.5">
+                                        <button type="button" onclick="saveEditedNote('${safeId}')" class="px-3 py-2 rounded-xl bg-salsa-600 text-white text-xs font-semibold hover:bg-salsa-700 cursor-pointer">
+                                            Opslaan
+                                        </button>
+                                        <button type="button" onclick="cancelEditNote()" class="px-3 py-2 rounded-xl bg-stone-100 text-slate-600 text-xs font-semibold hover:bg-stone-200 cursor-pointer">
+                                            Annuleer
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="text-sm text-slate-600 leading-relaxed">
+                                    ${fig.note 
+                                        ? `<p class="bg-stone-50 rounded-xl px-3.5 py-2 border border-stone-100 text-slate-700">${escapeHtml(fig.note)}</p>` 
+                                        : `<p class="text-xs text-slate-400 italic">Geen notitie toegevoegd</p>`
+                                    }
+                                </div>
+                            `}
+                        </div>
+
+                        <!-- Actieknoppen rechts -->
+                        <div class="flex items-center justify-between sm:justify-end gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100 shrink-0">
+                            <span class="text-[11px] text-slate-400 mr-2 sm:hidden">${escapeHtml(fig.createdAt || '')}</span>
+                            
+                            ${isDeleting ? `
+                                <div class="flex items-center gap-1.5 bg-red-50 px-2.5 py-1 rounded-xl border border-red-100">
+                                    <span class="text-xs font-medium text-red-700 mr-1">Zeker weten?</span>
+                                    <button type="button" onclick="confirmDelete('${safeId}')" class="px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 cursor-pointer">
+                                        Ja
+                                    </button>
+                                    <button type="button" onclick="cancelDelete()" class="px-2.5 py-1 rounded-lg bg-white text-slate-600 text-xs font-semibold border border-slate-200 hover:bg-stone-50 cursor-pointer">
+                                        Nee
+                                    </button>
+                                </div>
+                            ` : `
+                                <span class="text-[11px] text-slate-400 mr-1 hidden sm:inline">${escapeHtml(fig.createdAt || '')}</span>
+                                
+                                <!-- Laad in generator -->
+                                <button type="button" onclick="loadFigureIntoGenerator('${safeId}')" title="Laad in generator" class="p-2 rounded-xl text-slate-500 hover:text-salsa-600 hover:bg-salsa-50 transition-colors cursor-pointer">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+                                    </svg>
+                                </button>
+
+                                <!-- Bewerk notitie -->
+                                <button type="button" onclick="startEditNote('${safeId}')" title="Notitie bewerken" class="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-stone-100 transition-colors cursor-pointer">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>
+                                    </svg>
+                                </button>
+
+                                <!-- Verwijder -->
+                                <button type="button" onclick="requestDelete('${safeId}')" title="Verwijder figuur" class="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                </article>
+                `;
+            }).join('');
+        }
+
+        /**
+         * Kopieert tekst naar het klembord (modern Clipboard API met fallback)
+         */
+        async function copyTextToClipboard(text, successMsg = 'Gekopieerd naar klembord!') {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    showToast(successMsg, 'success');
+                    return;
+                }
+            } catch (e) {
+                // Val terug op execCommand
+            }
+
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = text;
+            tempTextArea.style.position = 'fixed';
+            tempTextArea.style.left = '-9999px';
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+
+            try {
+                document.execCommand('copy');
+                showToast(successMsg, 'success');
+            } catch (err) {
+                showToast('Kopiëren mislukt.', 'error');
+            } finally {
+                document.body.removeChild(tempTextArea);
+            }
+        }
+
+        /**
+         * Kopieert de gehele opgeslagen lijst als leesbare tekst naar het klembord
+         */
+        function copyAllToClipboard() {
+            if (state.savedFigures.length === 0) {
+                showToast('Je lijst is nog leeg om te kopiëren.', 'info');
+                return;
+            }
+
+            const formattedText = "💃 Mijn Salsa Figuren:\n\n" + state.savedFigures.map((fig, index) => {
+                const notePart = fig.note ? `\n   Notitie: ${fig.note}` : '';
+                return `${index + 1}. Leider: ${fig.leader} + Volger: ${fig.follower}${notePart}`;
+            }).join('\n\n');
+
+            copyTextToClipboard(formattedText, 'Lijst gekopieerd naar klembord!');
+        }
+
+        /**
+         * Toont een subtiele toast-melding rechtsonder in beeld
+         */
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-slate-900 text-white border-slate-800',
+                info: 'bg-white text-slate-800 border-stone-200',
+                error: 'bg-red-600 text-white border-red-700'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg border text-xs sm:text-sm font-medium animate-pop ${colors[type] || colors.info}`;
+            toast.textContent = message;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(6px)';
+                toast.style.transition = 'all 0.2s ease';
+                setTimeout(() => toast.remove(), 200);
+            }, 2600);
+        }
+
+        /**
+         * Voorkomt XSS bij het tonen van gebruikersinvoer
+         */
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
