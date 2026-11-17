@@ -243,14 +243,20 @@
                 </div>
 
                 <!-- Notitie toevoegen & Opslaan -->
-                <form id="save-form" onsubmit="saveCurrentFigure(event)" class="pt-6 border-t border-stone-200/80">
-                    <label for="figure-note" class="block text-sm font-semibold text-slate-700 mb-2">
+                <form id="save-form" autocomplete="off" onsubmit="saveCurrentFigure(event)" class="pt-6 border-t border-stone-200/80">
+                    <label for="salsa-figure-note" class="block text-sm font-semibold text-slate-700 mb-2">
                         Notitie bij deze combinatie <span class="text-slate-400 font-normal">(optioneel)</span>
                     </label>
                     <div class="flex flex-col sm:flex-row gap-3">
                         <input 
                             type="text" 
-                            id="figure-note" 
+                            id="salsa-figure-note" 
+                            name="salsa-figure-note"
+                            autocomplete="off"
+                            data-1p-ignore="true"
+                            data-lpignore="true"
+                            data-bwignore="true"
+                            data-form-type="other"
                             placeholder="Bijv. Handwissel op tel 5, eindigen in gesloten houding..." 
                             class="flex-1 rounded-xl border border-slate-200 bg-stone-50/70 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-salsa-500 focus:outline-none focus:ring-2 focus:ring-salsa-500/20 transition-all"
                         >
@@ -276,9 +282,16 @@
                 <!-- Zoek- & Kopieer-acties -->
                 <div id="list-actions" class="flex items-center gap-2">
                     <div class="relative flex-1 sm:w-56">
+                        <label for="salsa-figures-filter" class="sr-only">Filter opgeslagen figuren</label>
                         <input 
-                            type="text" 
-                            id="search-input" 
+                            type="search" 
+                            id="salsa-figures-filter" 
+                            name="salsa-figures-filter"
+                            autocomplete="off"
+                            data-1p-ignore="true"
+                            data-lpignore="true"
+                            data-bwignore="true"
+                            data-form-type="other"
                             oninput="renderSavedFigures()" 
                             placeholder="Zoek op beweging of notitie..." 
                             class="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-700 placeholder:text-slate-400 focus:border-salsa-500 focus:outline-none focus:ring-2 focus:ring-salsa-500/20"
@@ -340,12 +353,18 @@
 
             <!-- Gist ID / URL -->
             <div class="space-y-1.5">
-                <label for="gist-id-input" class="block text-xs font-semibold text-slate-700">
+                <label for="salsa-gist-reference" class="block text-xs font-semibold text-slate-700">
                     Gist ID of URL <span class="text-slate-400 font-normal">(laat leeg om een nieuwe Gist aan te maken)</span>
                 </label>
                 <input
                     type="text"
-                    id="gist-id-input"
+                    id="salsa-gist-reference"
+                    name="salsa-gist-reference"
+                    autocomplete="off"
+                    data-1p-ignore="true"
+                    data-lpignore="true"
+                    data-bwignore="true"
+                    data-form-type="other"
                     autofocus
                     placeholder="Bijv. a1b2c3d4... of https://gist.github.com/..."
                     class="w-full rounded-xl border border-slate-200 bg-stone-50/70 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-salsa-500 focus:outline-none focus:ring-2 focus:ring-salsa-500/20"
@@ -355,7 +374,7 @@
             <!-- GitHub Personal Access Token -->
             <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
-                    <label for="gist-token-input" class="block text-xs font-semibold text-slate-700">
+                    <label for="salsa-gist-pat" class="block text-xs font-semibold text-slate-700">
                         GitHub Personal Access Token <span class="text-slate-400 font-normal">(voor opslaan/bijwerken)</span>
                     </label>
                     <a href="https://github.com/settings/tokens/new?scopes=gist&description=Salsa%20Figuren%20Lab" target="_blank" rel="noopener noreferrer" class="text-[11px] font-medium text-salsa-600 hover:text-salsa-700 underline underline-offset-2">
@@ -365,8 +384,13 @@
                 <div class="relative">
                     <input
                         type="password"
-                        id="gist-token-input"
-                        autocomplete="off"
+                        id="salsa-gist-pat"
+                        name="salsa-gist-pat"
+                        autocomplete="new-password"
+                        data-1p-ignore="true"
+                        data-lpignore="true"
+                        data-bwignore="true"
+                        data-form-type="other"
                         placeholder="ghp_... of github_pat_..."
                         class="w-full rounded-xl border border-slate-200 bg-stone-50/70 px-3.5 py-2.5 pr-16 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-salsa-500 focus:outline-none focus:ring-2 focus:ring-salsa-500/20"
                     >
@@ -661,7 +685,7 @@
          */
         function saveCurrentFigure(event) {
             event.preventDefault();
-            const noteInput = document.getElementById('figure-note');
+            const noteInput = document.getElementById('salsa-figure-note');
             const noteText = noteInput.value.trim();
 
             const newFigure = {
@@ -709,7 +733,7 @@
             renderSavedFigures();
             
             setTimeout(() => {
-                const input = document.getElementById(`edit-note-input-${id}`);
+                const input = document.getElementById(`salsa-edit-note-${id}`);
                 if (input) {
                     input.focus();
                     input.setSelectionRange(input.value.length, input.value.length);
@@ -723,7 +747,7 @@
         }
 
         function saveEditedNote(id) {
-            const input = document.getElementById(`edit-note-input-${id}`);
+            const input = document.getElementById(`salsa-edit-note-${id}`);
             if (!input) return;
 
             const fig = state.savedFigures.find(f => f.id === id);
@@ -880,8 +904,8 @@
 
         function openGistDialog() {
             const dialog = document.getElementById('gist-dialog');
-            document.getElementById('gist-id-input').value = state.gist.gistId || '';
-            document.getElementById('gist-token-input').value = state.gist.token || '';
+            document.getElementById('salsa-gist-reference').value = state.gist.gistId || '';
+            document.getElementById('salsa-gist-pat').value = state.gist.token || '';
             document.getElementById('gist-autosync-checkbox').checked = Boolean(state.gist.autoSync);
             hideGistFeedback();
             updateGistDialogBanner();
@@ -894,7 +918,7 @@
         }
 
         function toggleTokenVisibility() {
-            const input = document.getElementById('gist-token-input');
+            const input = document.getElementById('salsa-gist-pat');
             const btn = document.getElementById('toggle-token-btn');
             if (input.type === 'password') {
                 input.type = 'text';
@@ -956,8 +980,8 @@
         }
 
         function syncGistInputsToState() {
-            const rawId = document.getElementById('gist-id-input').value;
-            const rawToken = document.getElementById('gist-token-input').value.trim();
+            const rawId = document.getElementById('salsa-gist-reference').value;
+            const rawToken = document.getElementById('salsa-gist-pat').value.trim();
             const autoSync = document.getElementById('gist-autosync-checkbox').checked;
 
             state.gist.gistId = extractGistId(rawId);
@@ -1037,7 +1061,7 @@
                 updateGistDialogBanner();
 
                 if (!quiet) {
-                    document.getElementById('gist-id-input').value = data.id;
+                    document.getElementById('salsa-gist-reference').value = data.id;
                     showGistFeedback(
                         isUpdate ? 'Gist succesvol bijgewerkt!' : `Nieuwe Gist aangemaakt (${data.id})!`,
                         'success'
@@ -1174,8 +1198,8 @@
         function clearGistConfig() {
             state.gist = { gistId: '', token: '', autoSync: false, lastSyncedAt: null };
             localStorage.removeItem(GIST_CONFIG_KEY);
-            document.getElementById('gist-id-input').value = '';
-            document.getElementById('gist-token-input').value = '';
+            document.getElementById('salsa-gist-reference').value = '';
+            document.getElementById('salsa-gist-pat').value = '';
             document.getElementById('gist-autosync-checkbox').checked = false;
             updateGistStatusUI();
             updateGistDialogBanner();
@@ -1189,7 +1213,7 @@
             const listEl = document.getElementById('saved-list');
             const emptyEl = document.getElementById('empty-state');
             const countEl = document.getElementById('saved-count');
-            const searchQuery = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+            const searchQuery = (document.getElementById('salsa-figures-filter')?.value || '').toLowerCase().trim();
 
             countEl.textContent = state.savedFigures.length;
 
@@ -1245,7 +1269,13 @@
                                 <div class="pt-1 flex flex-col sm:flex-row gap-2">
                                     <input 
                                         type="text" 
-                                        id="edit-note-input-${safeId}" 
+                                        id="salsa-edit-note-${safeId}" 
+                                        name="salsa-edit-note-${safeId}"
+                                        autocomplete="off"
+                                        data-1p-ignore="true"
+                                        data-lpignore="true"
+                                        data-bwignore="true"
+                                        data-form-type="other"
                                         value="${escapeHtml(fig.note || '')}" 
                                         onkeydown="if(event.key==='Enter') saveEditedNote('${safeId}'); if(event.key==='Escape') cancelEditNote();"
                                         placeholder="Voeg een notitie toe..."
